@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from src.db import init_db
 from src.location_resolver import resolve_location
 from src.reporter_devices import get_device, save_device
-from src.reports import add_file, create_report, get_report, get_report_file
+from src.reports import add_file, add_message, create_report, get_messages, get_report, get_report_file, list_reports, update_report_workflow
 from src.storage import delete_stored, save_upload, validate_upload
 from src.telegram_service import notify
 
@@ -25,6 +25,7 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", 52428800)
 init_db()
 
 REPORT_TYPES = {"safety_near_miss", "maintenance_request", "process_quality"}
+WORKFLOW_STATUSES = {"new", "reviewed", "assigned", "in_progress", "resolved"}
 RATE_BUCKETS = defaultdict(deque)
 
 
@@ -121,7 +122,47 @@ def report_success(report_id):
 def report_detail(report_id):
     report, files = get_report(report_id)
     if not report or not report_authorized(report): abort(404)
-    return render_template("report_detail.html", report=report, files=files, token=report["public_token"])
+    return render_template("report_detail.html", report=report, files=files, messages=get_messages(report_id), token=report["public_token"])
+
+
+@app.post("/report/<int:report_id>/messages")
+def reporter_message(report_id):
+    report, _ = get_report(report_id)
+    if not report or not report_authorized(report): abort(404)
+    body = request.form.get("body", "").strip()
+    if 1 <= len(body) <= 1000:
+        add_message(report_id, report["reporter_name"] or "מדווח", "reporter", body)
+    return redirect(url_for("report_detail", report_id=report_id, token=report["public_token"]))
+
+
+@app.get("/manage")
+def manage_dashboard():
+    return render_template("manage.html", reports=list_reports(request.args.get("status", "all")), active_status=request.args.get("status", "all"))
+
+
+@app.get("/manage/report/<int:report_id>")
+def manage_report(report_id):
+    report, files = get_report(report_id)
+    if not report: abort(404)
+    return render_template("manage_report.html", report=report, files=files, messages=get_messages(report_id))
+
+
+@app.post("/manage/report/<int:report_id>/workflow")
+def manage_workflow(report_id):
+    status = request.form.get("status", "new")
+    if status not in WORKFLOW_STATUSES: abort(400)
+    update_report_workflow(report_id, status, request.form.get("assigned_to", "").strip()[:80], request.form.get("review_note", "").strip()[:1000])
+    return redirect(url_for("manage_report", report_id=report_id))
+
+
+@app.post("/manage/report/<int:report_id>/messages")
+def manager_message(report_id):
+    report, _ = get_report(report_id)
+    if not report: abort(404)
+    body = request.form.get("body", "").strip(); author = request.form.get("author_name", "מוקד אחזקה").strip()[:80]
+    if 1 <= len(body) <= 1000:
+        add_message(report_id, author or "מוקד אחזקה", "manager", body)
+    return redirect(url_for("manage_report", report_id=report_id))
 
 
 @app.get("/report/<int:report_id>/files/<int:file_id>")

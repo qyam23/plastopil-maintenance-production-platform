@@ -58,10 +58,24 @@ def init_db():
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS report_messages (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          report_id INTEGER NOT NULL,
+          author_name TEXT NOT NULL,
+          author_role TEXT NOT NULL CHECK(author_role IN ('reporter','manager','technician')),
+          body TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
+        );
         CREATE INDEX IF NOT EXISTS idx_report_files_report_id ON report_files(report_id);
         CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+        CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id);
         """)
         _ensure_column(conn, "reports", "public_token", "TEXT")
+        _ensure_column(conn, "reports", "assigned_to", "TEXT")
+        _ensure_column(conn, "reports", "reporter_device_label", "TEXT")
+        _ensure_column(conn, "reports", "assigned_at", "TEXT")
+        _ensure_column(conn, "reports", "review_note", "TEXT")
         _ensure_column(conn, "reporter_devices", "binding_token", "TEXT")
         for row in conn.execute("SELECT device_id FROM reporter_devices WHERE binding_token IS NULL OR binding_token = ''"):
             conn.execute("UPDATE reporter_devices SET binding_token = ? WHERE device_id = ?", (secrets.token_urlsafe(24), row["device_id"]))
