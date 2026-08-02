@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>{% block title %}PLASTOPIL{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/media.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dynamic-theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/identity.css') }}">
+</head>
+<body>
+  <main class="app-shell">
+    {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}
+      <div class="notice {{ category }}">{{ message }}</div>
+    {% endfor %}{% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

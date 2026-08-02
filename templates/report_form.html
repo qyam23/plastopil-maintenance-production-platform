@@ -1,0 +1,36 @@
+{% extends 'base.html' %}{% block content %}
+<header><a href="{{ url_for('start') }}" class="back">→ חזרה</a><p class="eyebrow">דיווח חדש</p><h1>מה קרה?</h1></header>
+{% if location %}<div class="location-banner">✓ {{ location.department }} — {{ location.machine }}</div>{% else %}<div class="location-banner muted">ללא מיקום מזוהה</div>{% endif %}
+<form method="post" enctype="multipart/form-data" id="report-form">
+  <input type="hidden" name="location_code" value="{{ location_code }}">
+  <input type="hidden" name="device_id" id="device-id">
+  <section class="reporter-bar" id="reporter-bar" hidden><span id="reporter-display"></span><button type="button" id="change-reporter">החלפת שם</button></section>
+  <section class="identity-panel" id="identity-panel" hidden aria-live="polite">
+    <h2>זיהוי מדווח</h2><p>פרטים אלו ישמשו לטיפול בדיווח, במיוחד בדיווחי בטיחות.</p>
+    <label>שם מלא<input id="reporter-name" maxlength="80" autocomplete="name" placeholder="השם שלך"></label>
+    <label>כינוי מכשיר <small>(אופציונלי)</small><input id="device-label" maxlength="80" placeholder="למשל: טלפון אחזקה קו 14"></label>
+    <button type="button" class="button primary" id="save-reporter">שמירה והמשך</button>
+  </section>
+  <fieldset class="type-picker"><legend>בחרו סוג דיווח</legend>
+    <label class="type-card safety"><input type="radio" name="report_type" value="safety_near_miss"><span>⚠️</span><b>כמעט ונפגע / בטיחות</b></label>
+    <label class="type-card maintenance"><input type="radio" name="report_type" value="maintenance_request"><span>🔧</span><b>תקלה / בקשת עזרת אחזקה</b></label>
+    <label class="type-card quality"><input type="radio" name="report_type" value="process_quality"><span>📊</span><b>איכות / חריגת תהליך</b></label>
+  </fieldset>
+  <div class="safety-reporter" id="safety-reporter" hidden>דיווח בטיחות יישלח בשם: <strong id="safety-reporter-name"></strong><button type="button" id="safety-change-reporter">החלפת שם</button></div>
+  <textarea name="text_body" placeholder="מה קרה?" aria-label="מה קרה?"></textarea>
+  <div class="attachment-actions">
+    <button type="button" class="media-action files-action" id="files-button"><span class="media-icon">📎</span><span>צירוף קבצים<small>תמונות או וידאו</small></span></button>
+    <button type="button" class="media-action camera-action" id="camera-button"><span class="media-icon">📷</span><span>צילום במצלמה<small>תמונה או וידאו</small></span></button>
+    <button type="button" class="media-action audio-action" id="record-button"><span class="media-icon">🎙️</span><span>הקלטה קולית<small>הודעה מהמיקרופון</small></span></button>
+    <input type="file" name="attachments" id="media-file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" multiple hidden>
+  </div>
+  <section id="camera-panel" class="camera-panel" hidden aria-live="polite">
+    <video id="camera-preview" playsinline autoplay muted></video>
+    <p id="camera-status">בחרו תמונה או וידאו.</p>
+    <div class="camera-actions"><button type="button" class="attach" id="camera-photo">צלם תמונה</button><button type="button" class="attach" id="camera-video">התחל וידאו</button><button type="button" class="attach camera-cancel" id="camera-stop">ביטול</button></div>
+  </section>
+  <div id="recording-status" class="recording-status" aria-live="polite"></div>
+  <div id="attachment-list" class="attachment-list"></div>
+  <button class="button primary send" type="submit">שלח דיווח <span>←</span></button>
+</form>
+{% endblock %}{% block scripts %}<script src="{{ url_for('static', filename='js/app.js') }}" defer></script><script src="{{ url_for('static', filename='js/recorder.js') }}" defer></script>{% endblock %}

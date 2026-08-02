@@ -1,0 +1,9 @@
+.attachment-actions{grid-template-columns:1fr;gap:14px}
+.media-action{width:100%;min-height:78px;border:0;border-radius:22px;display:flex;align-items:center;gap:16px;padding:14px 19px;text-align:right;font:700 19px Arial,"Noto Sans Hebrew",sans-serif;color:#10263d;cursor:pointer;box-shadow:0 5px 0 rgba(16,38,61,.13),0 10px 20px rgba(16,38,61,.12);transition:transform .15s,box-shadow .15s}
+.media-action:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(16,38,61,.13),0 4px 10px rgba(16,38,61,.12)}
+.media-action small{display:block;font-size:14px;font-weight:400;margin-top:5px;color:#486276}
+.media-icon{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;font-size:26px;background:rgba(255,255,255,.7)}
+.files-action{background:#e5f1f6}.camera-action{background:#e9f1ff}.audio-action{background:#e8f5ee}
+.camera-panel{background:#10263d;border-radius:22px;padding:14px;margin:16px 0;color:white;box-shadow:0 8px 20px rgba(16,38,61,.2)}
+.camera-panel video{width:100%;border-radius:15px;background:#000;max-height:330px}.camera-panel p{text-align:center}
+.camera-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.camera-actions .attach{background:#f5a623;border:0}.camera-actions .camera-cancel{grid-column:1 / -1;background:#dce6eb}

@@ -1,0 +1,11 @@
+body{transition:background-color .55s ease}
+body.theme-safety{background:#fff6df;animation:safety-glow 9s ease-in-out infinite alternate}
+body.theme-maintenance{background:#fff0e3;animation:maintenance-glow 9s ease-in-out infinite alternate}
+body.theme-quality{background:#eaf5fb;animation:quality-glow 9s ease-in-out infinite alternate}
+body.theme-safety .type-card.safety{border-color:#be7b00;background:#fff0bd}
+body.theme-maintenance .type-card.maintenance{border-color:#d66b00;background:#ffe4cc}
+body.theme-quality .type-card.quality{border-color:#087fbd;background:#dff2fb}
+@keyframes safety-glow{from{background-color:#fff6df}to{background-color:#ffe7a1}}
+@keyframes maintenance-glow{from{background-color:#fff0e3}to{background-color:#ffd5ae}}
+@keyframes quality-glow{from{background-color:#eaf5fb}to{background-color:#cdeafb}}
+@media (prefers-reduced-motion:reduce){body.theme-safety,body.theme-maintenance,body.theme-quality{animation:none;transition:none}}

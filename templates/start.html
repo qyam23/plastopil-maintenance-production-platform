@@ -1,0 +1,7 @@
+{% extends 'base.html' %}{% block title %}בחירת דיווח | PLASTOPIL{% endblock %}{% block content %}
+<header><a href="{{ url_for('welcome') }}" class="back">→ חזרה</a><p class="eyebrow">PLASTOPIL</p><h1>איך נוח לדווח?</h1></header>
+<section class="choice-grid">
+  <a class="choice-card scan" href="{{ url_for('scan') }}"><span class="choice-icon">⌁</span><strong>סריקת מכונה</strong><small>SCAN QR</small></a>
+  <a class="choice-card direct" href="{{ url_for('report_new') }}"><span class="choice-icon">✋</span><strong>דיווח ישיר</strong><small>ללא סריקה</small></a>
+</section>
+{% endblock %}
