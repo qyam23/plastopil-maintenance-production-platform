@@ -6,9 +6,12 @@ from .db import connection
 
 def create_qrcode(name, description, location_code):
     with connection() as conn:
-        cursor = conn.execute("INSERT INTO location_qrcodes (name, description, location_code) VALUES (?, ?, ?)",
+        query = "INSERT INTO location_qrcodes (name, description, location_code) VALUES (?, ?, ?)"
+        if conn.dialect == "postgres":
+            query += " RETURNING id"
+        cursor = conn.execute(query,
                               (name, description or None, location_code))
-        return cursor.lastrowid
+        return cursor.fetchone()["id"] if conn.dialect == "postgres" else cursor.lastrowid
 
 
 def list_qrcodes():

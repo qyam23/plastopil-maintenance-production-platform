@@ -6,7 +6,14 @@ services:
     startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
     plan: free
     envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: plastopil-reporting-db
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: MAX_CONTENT_LENGTH
         value: "52428800"
+databases:
+  - name: plastopil-reporting-db
+    plan: free

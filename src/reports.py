@@ -7,13 +7,16 @@ def create_report(report_type, text_body, location_code=None, location=None, rep
     reporter = reporter or {}
     token = secrets.token_urlsafe(24)
     with connection() as conn:
+        query = """INSERT INTO reports (report_type, text_body, site, department, machine, location_code, reporter_id, reporter_name, reporter_device_label, public_token)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+        if conn.dialect == "postgres":
+            query += " RETURNING id"
         cursor = conn.execute(
-            """INSERT INTO reports (report_type, text_body, site, department, machine, location_code, reporter_id, reporter_name, reporter_device_label, public_token)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            query,
             (report_type, text_body, location.get("site"), location.get("department"), location.get("machine"),
              location_code, reporter.get("device_id"), reporter.get("reporter_name"), reporter.get("device_label"), token),
         )
-        return cursor.lastrowid
+        return cursor.fetchone()["id"] if conn.dialect == "postgres" else cursor.lastrowid
 
 
 def add_file(report_id, file_data):
