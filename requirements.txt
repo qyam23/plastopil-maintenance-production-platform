@@ -4,3 +4,4 @@ requests>=2.31,<3.0
 gunicorn>=22.0,<24.0
 qrcode[pil]>=7.4,<9.0
 psycopg[binary]>=3.2,<4.0
+pywebpush>=2.0,<3.0

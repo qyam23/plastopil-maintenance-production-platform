@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
       response = await send();
     }
     if (!response.ok) return false;
-    identity = await response.json(); localStorage.setItem('plastopil_reporter', JSON.stringify(identity)); renderIdentity(); return true;
+    identity = await response.json(); localStorage.setItem('plastopil_reporter', JSON.stringify(identity)); renderIdentity(); window.dispatchEvent(new Event('plastopil:identity-updated')); return true;
   };
   document.querySelector('#change-reporter').addEventListener('click', openIdentity);
   document.querySelector('#safety-change-reporter').addEventListener('click', openIdentity);

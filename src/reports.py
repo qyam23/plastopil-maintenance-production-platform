@@ -62,3 +62,7 @@ def add_message(report_id, author_name, author_role, body):
     with connection() as conn:
         conn.execute("INSERT INTO report_messages (report_id, author_name, author_role, body) VALUES (?, ?, ?, ?)",
                      (report_id, author_name, author_role, body))
+    if author_role in {"manager", "technician"}:
+        from .push_notifications import notify_reporter
+        report, _ = get_report(report_id)
+        notify_reporter(report, "PLASTOPIL — עדכון לקריאה", f"יש עדכון חדש לקריאה #{report_id}.")

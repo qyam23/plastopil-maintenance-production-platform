@@ -9,6 +9,7 @@ from flask import Flask, abort, flash, jsonify, redirect, render_template, reque
 from werkzeug.urls import urlsplit
 from src.auth import authenticate, get_user, seed_initial_users
 from src.qrcodes import create_qrcode, get_qrcode, list_qrcodes, make_qr_png
+from src.push_notifications import notify_reporter, push_enabled, save_subscription, vapid_public_key
 from dotenv import load_dotenv
 from src.db import init_db
 from src.location_resolver import normalize_location_code, resolve_location
@@ -106,6 +107,12 @@ def start(): return render_template("start.html")
 @app.get("/scan")
 def scan(): return render_template("scan.html")
 
+@app.get("/service-worker.js")
+def service_worker():
+    response = send_from_directory(BASE_DIR / "static", "service-worker.js", mimetype="application/javascript")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
+
 @app.get("/report/new")
 def report_new():
     code = normalize_location_code(request.args.get("location", ""))
@@ -122,6 +129,29 @@ def reporter_device_save():
     try: save_device(device_id, reporter_name, device_label, binding_token())
     except PermissionError: return jsonify({"error": "המכשיר משויך להפעלה אחרת. הזינו זיהוי חדש."}), 403
     return jsonify({"device_id": device_id, "reporter_name": reporter_name, "device_label": device_label})
+
+
+@app.get("/api/push/config")
+def push_config():
+    if not push_enabled():
+        return jsonify({"error": "Push is not configured"}), 503
+    return jsonify({"public_key": vapid_public_key()})
+
+
+@app.post("/api/push-subscriptions")
+@rate_limit(12)
+def push_subscription_save():
+    if not push_enabled():
+        return jsonify({"error": "Push is not configured"}), 503
+    payload = request.get_json(silent=True) or {}
+    device_id = str(payload.get("device_id", "")).strip()
+    if not get_device(device_id, binding_token()):
+        return jsonify({"error": "Unknown reporter device"}), 403
+    try:
+        save_subscription(device_id, payload.get("subscription") or {})
+    except ValueError:
+        return jsonify({"error": "Invalid subscription"}), 400
+    return jsonify({"ok": True})
 
 
 @app.post("/report/new")
@@ -246,6 +276,9 @@ def manage_workflow(report_id):
     status = request.form.get("status", "new")
     if status not in WORKFLOW_STATUSES: abort(400)
     update_report_workflow(report_id, status, request.form.get("assigned_to", "").strip()[:80], request.form.get("review_note", "").strip()[:1000])
+    report, _ = get_report(report_id)
+    status_labels = {"new":"התקבלה", "reviewed":"נבדקה", "assigned":"הועברה לטיפול", "in_progress":"בטיפול", "resolved":"נסגרה"}
+    notify_reporter(report, "PLASTOPIL — עדכון לקריאה", f"קריאה #{report_id}: {status_labels[status]}.")
     return redirect(url_for("manage_report", report_id=report_id))
 
 

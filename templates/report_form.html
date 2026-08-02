@@ -5,6 +5,7 @@
   <input type="hidden" name="location_code" value="{{ location_code }}">
   <input type="hidden" name="device_id" id="device-id">
   <section class="reporter-bar" id="reporter-bar" hidden><span id="reporter-display"></span><button type="button" id="change-reporter">החלפת שם</button></section>
+  <section class="push-panel" id="push-panel" hidden><p>קבלו עדכונים על הקריאה</p><button type="button" class="button secondary" id="enable-push">אפשר התראות במכשיר זה</button><small id="push-status">ההתראה תציג רק עדכון כללי לקריאה, ללא פרטי תקלה.</small></section>
   <section class="identity-panel" id="identity-panel" hidden aria-live="polite">
     <h2>זיהוי מדווח</h2><p>פרטים אלו ישמשו לטיפול בדיווח, במיוחד בדיווחי בטיחות.</p>
     <label>שם מלא<input id="reporter-name" maxlength="80" autocomplete="name" placeholder="השם שלך"></label>
@@ -33,4 +34,4 @@
   <div id="attachment-list" class="attachment-list"></div>
   <button class="button primary send" type="submit">שלח דיווח <span>←</span></button>
 </form>
-{% endblock %}{% block scripts %}<script src="{{ url_for('static', filename='js/app.js') }}" defer></script><script src="{{ url_for('static', filename='js/recorder.js') }}" defer></script>{% endblock %}
+{% endblock %}{% block scripts %}<script src="{{ url_for('static', filename='js/app.js') }}" defer></script><script src="{{ url_for('static', filename='js/push.js') }}" defer></script><script src="{{ url_for('static', filename='js/recorder.js') }}" defer></script>{% endblock %}

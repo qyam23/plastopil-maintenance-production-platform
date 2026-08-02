@@ -98,6 +98,11 @@ SQLITE_SCHEMA = [
       id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, description TEXT,
       location_code TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""",
+    """CREATE TABLE IF NOT EXISTS push_subscriptions (
+      device_id TEXT PRIMARY KEY, subscription_json TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )""",
 ]
 
 POSTGRES_SCHEMA = [
@@ -134,6 +139,11 @@ POSTGRES_SCHEMA = [
     """CREATE TABLE IF NOT EXISTS location_qrcodes (
       id BIGSERIAL PRIMARY KEY, name TEXT NOT NULL, description TEXT,
       location_code TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )""",
+    """CREATE TABLE IF NOT EXISTS push_subscriptions (
+      device_id TEXT PRIMARY KEY, subscription_json TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""",
 ]
 
