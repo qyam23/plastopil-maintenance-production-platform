@@ -10,10 +10,12 @@ window.addEventListener('load', () => {
     if (!code || redirected) return;
     redirected = true;
     message.textContent = 'הקוד זוהה. פותחים דיווח…';
-    if (scanner) scanner.stop().catch(() => {}).finally(() => {
+    // Do not wait for stop(): on some phones it can remain pending while the
+    // browser is showing the camera-permission prompt.
+    if (scanner) { try { scanner.stop().catch(() => {}); } catch (_) {} }
+    window.setTimeout(() => {
       window.location.assign(`/report/new?location=${encodeURIComponent(code)}`);
-    });
-    else window.location.assign(`/report/new?location=${encodeURIComponent(code)}`);
+    }, 80);
   };
 
   // Manager QR codes contain the full report URL. Extract its location first.
