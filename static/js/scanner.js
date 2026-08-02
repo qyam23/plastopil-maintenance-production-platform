@@ -7,24 +7,25 @@ window.addEventListener('load', () => {
   let scanner;
   let redirected = false;
 
-  const openReport = (locationCode) => {
-    const code = String(locationCode || '').trim();
-    if (!code || redirected) return;
+  const openDestination = (destination) => {
+    if (!destination || redirected) return;
     redirected = true;
     message.textContent = 'הקוד זוהה. פותחים דיווח…';
     // Do not wait for stop(): Android can keep it pending while the browser
     // displays or closes a camera-permission prompt.
     if (scanner) { try { scanner.stop().catch(() => {}); } catch (_) {} }
-    window.setTimeout(() => window.location.assign(`/report/new?location=${encodeURIComponent(code)}`), 80);
+    window.setTimeout(() => window.location.assign(destination), 80);
   };
 
-  const locationFromQr = (decodedText) => {
+  const destinationFromQr = (decodedText) => {
     const raw = String(decodedText || '').trim();
     try {
-      const location = new URL(raw).searchParams.get('location');
-      if (location) return location;
+      const url = new URL(raw);
+      if (url.origin === window.location.origin && /^\/q\/\d+$/.test(url.pathname)) return url.pathname;
+      const location = url.searchParams.get('location');
+      if (location) return `/report/new?location=${encodeURIComponent(location)}`;
     } catch (_) { /* Older QR codes may contain only a location code. */ }
-    return raw;
+    return `/report/new?location=${encodeURIComponent(raw)}`;
   };
 
   const cameraError = (error) => {
@@ -59,7 +60,7 @@ window.addEventListener('load', () => {
       await populateCameras();
       scanner = new Html5Qrcode('qr-reader');
       await scanner.start(cameraSelect.value, { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
-        decodedText => openReport(locationFromQr(decodedText)), () => {});
+        decodedText => openDestination(destinationFromQr(decodedText)), () => {});
       message.textContent = 'כוונו את המצלמה אל קוד ה־QR.';
       startButton.hidden = true;
     } catch (error) { cameraError(error); }
@@ -69,7 +70,7 @@ window.addEventListener('load', () => {
   manualSubmit.addEventListener('click', () => {
     const value = manualInput.value.trim();
     if (!value) { manualInput.focus(); return; }
-    openReport(locationFromQr(value));
+    openDestination(destinationFromQr(value));
   });
   manualInput.addEventListener('keydown', event => {
     if (event.key === 'Enter') { event.preventDefault(); manualSubmit.click(); }

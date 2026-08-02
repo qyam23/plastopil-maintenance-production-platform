@@ -1,8 +1,10 @@
 import os
+import re
 import secrets
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from psycopg.rows import dict_row
 import psycopg
@@ -174,3 +176,23 @@ def init_db():
             conn.execute("UPDATE reporter_devices SET binding_token = ? WHERE device_id = ?", (secrets.token_urlsafe(24), row["device_id"]))
         for row in conn.execute("SELECT id FROM reports WHERE public_token IS NULL OR public_token = ''"):
             conn.execute("UPDATE reports SET public_token = ? WHERE id = ?", (secrets.token_urlsafe(24), row["id"]))
+        # Repair reports submitted by earlier scanner versions that saved the
+        # compact QR URL itself instead of the QR location code.
+        for report in conn.execute("SELECT id, location_code FROM reports WHERE location_code LIKE ?", ("http%",)):
+            raw = report["location_code"]
+            try:
+                parsed = urlparse(raw)
+                match = re.fullmatch(r"/q/(\d+)", parsed.path)
+                if match:
+                    location = conn.execute("SELECT name, description, location_code FROM location_qrcodes WHERE id = ?", (int(match.group(1)),)).fetchone()
+                    if location:
+                        conn.execute(
+                            "UPDATE reports SET location_code = ?, site = ?, department = ?, machine = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                            (location["location_code"], "PLASTOPIL", location["description"] or "מיקום שנסרק ב־QR", location["name"], report["id"]),
+                        )
+                        continue
+                location_code = parse_qs(parsed.query).get("location", [""])[0].strip()
+                if location_code:
+                    conn.execute("UPDATE reports SET location_code = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (location_code, report["id"]))
+            except ValueError:
+                continue

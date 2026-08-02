@@ -11,7 +11,7 @@ from src.auth import authenticate, get_user, seed_initial_users
 from src.qrcodes import create_qrcode, get_qrcode, list_qrcodes, make_qr_png
 from dotenv import load_dotenv
 from src.db import init_db
-from src.location_resolver import resolve_location
+from src.location_resolver import normalize_location_code, resolve_location
 from src.reporter_devices import get_device, save_device
 from src.reports import add_file, add_message, create_report, get_messages, get_report, get_report_file, list_reports, update_report_workflow
 from src.storage import delete_stored, save_upload, validate_upload
@@ -108,7 +108,7 @@ def scan(): return render_template("scan.html")
 
 @app.get("/report/new")
 def report_new():
-    code = request.args.get("location", "").strip()
+    code = normalize_location_code(request.args.get("location", ""))
     return render_template("report_form.html", location_code=code, location=resolve_location(code) if code else None)
 
 
@@ -128,7 +128,7 @@ def reporter_device_save():
 @rate_limit(20)
 def report_create():
     report_type = request.form.get("report_type", "")
-    code = request.form.get("location_code", "").strip(); text_body = request.form.get("text_body", "").strip()
+    code = normalize_location_code(request.form.get("location_code", "")); text_body = request.form.get("text_body", "").strip()
     uploads = [upload for upload in request.files.getlist("attachments") if upload and upload.filename]
     if report_type not in REPORT_TYPES:
         flash("יש לבחור סוג דיווח לפני השליחה", "error"); return redirect(url_for("report_new", location=code))
