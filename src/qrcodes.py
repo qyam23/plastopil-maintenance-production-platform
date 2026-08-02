@@ -1,6 +1,6 @@
 from io import BytesIO
 import qrcode
-from qrcode.constants import ERROR_CORRECT_H
+from qrcode.constants import ERROR_CORRECT_M
 from .db import connection
 
 
@@ -25,6 +25,7 @@ def get_qrcode(qr_id):
 
 
 def make_qr_png(url):
-    image = qrcode.make(url, error_correction=ERROR_CORRECT_H, box_size=12, border=4)
+    # Larger modules scan more reliably from a 5 x 5 cm printed label.
+    image = qrcode.make(url, error_correction=ERROR_CORRECT_M, box_size=16, border=4)
     output = BytesIO(); image.save(output, format="PNG"); output.seek(0)
     return output

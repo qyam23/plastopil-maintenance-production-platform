@@ -211,8 +211,16 @@ def manage_qrcodes():
 def qrcode_image(qr_id):
     record = get_qrcode(qr_id)
     if not record: abort(404)
-    target = url_for("report_new", location=record["location_code"], _external=True)
+    target = url_for("report_from_qr", qr_id=record["id"], _external=True)
     return send_file(make_qr_png(target), mimetype="image/png", download_name=f"{record['location_code']}.png")
+
+
+@app.get("/q/<int:qr_id>")
+def report_from_qr(qr_id):
+    """Compact destination encoded in printable QR labels."""
+    record = get_qrcode(qr_id)
+    if not record: abort(404)
+    return redirect(url_for("report_new", location=record["location_code"]))
 
 
 @app.get("/manage/qr/<int:qr_id>/print")
