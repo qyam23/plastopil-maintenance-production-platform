@@ -5,9 +5,10 @@ import time
 from collections import defaultdict, deque
 from functools import wraps
 from pathlib import Path
-from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_file, send_from_directory, session, url_for
 from werkzeug.urls import urlsplit
 from src.auth import authenticate, get_user, seed_initial_users
+from src.qrcodes import create_qrcode, get_qrcode, list_qrcodes, make_qr_png
 from dotenv import load_dotenv
 from src.db import init_db
 from src.location_resolver import resolve_location
@@ -184,6 +185,42 @@ def manage_dashboard():
     if session.get("role") == "technician":
         reports = [report for report in reports if report["assigned_to"] == session.get("display_name")]
     return render_template("manage.html", reports=reports, active_status=request.args.get("status", "all"))
+
+
+@app.route("/manage/qr", methods=["GET", "POST"])
+@manager_required
+def manage_qrcodes():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()[:120]
+        description = request.form.get("description", "").strip()[:500]
+        location_code = request.form.get("location_code", "").strip().upper()[:120]
+        if not name or not location_code:
+            flash("יש להזין שם וקוד מיקום", "error")
+        else:
+            try:
+                create_qrcode(name, description, location_code)
+                flash("קוד QR נוצר ומוכן להדפסה", "success")
+                return redirect(url_for("manage_qrcodes"))
+            except Exception:
+                flash("קוד המיקום כבר קיים. בחרו קוד שונה", "error")
+    return render_template("manage_qr.html", codes=list_qrcodes())
+
+
+@app.get("/manage/qr/<int:qr_id>/image.png")
+@staff_required
+def qrcode_image(qr_id):
+    record = get_qrcode(qr_id)
+    if not record: abort(404)
+    target = url_for("report_new", location=record["location_code"], _external=True)
+    return send_file(make_qr_png(target), mimetype="image/png", download_name=f"{record['location_code']}.png")
+
+
+@app.get("/manage/qr/<int:qr_id>/print")
+@manager_required
+def qrcode_print(qr_id):
+    record = get_qrcode(qr_id)
+    if not record: abort(404)
+    return render_template("print_qr.html", record=record)
 
 
 @app.get("/manage/report/<int:report_id>")
