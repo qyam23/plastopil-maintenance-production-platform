@@ -67,6 +67,15 @@ def init_db():
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
         );
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT NOT NULL UNIQUE,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('manager','technician')),
+          password_hash TEXT NOT NULL,
+          active INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE INDEX IF NOT EXISTS idx_report_files_report_id ON report_files(report_id);
         CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
         CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id);

@@ -6,6 +6,8 @@ from collections import defaultdict, deque
 from functools import wraps
 from pathlib import Path
 from flask import Flask, abort, flash, jsonify, redirect, render_template, request, send_from_directory, session, url_for
+from werkzeug.urls import urlsplit
+from src.auth import authenticate, get_user, seed_initial_users
 from dotenv import load_dotenv
 from src.db import init_db
 from src.location_resolver import resolve_location
@@ -23,6 +25,7 @@ if not secret_key:
 app.config["SECRET_KEY"] = secret_key
 app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", 52428800))
 init_db()
+seed_initial_users()
 
 REPORT_TYPES = {"safety_near_miss", "maintenance_request", "process_quality"}
 WORKFLOW_STATUSES = {"new", "reviewed", "assigned", "in_progress", "resolved"}
@@ -43,6 +46,26 @@ def rate_limit(limit, seconds=60):
     return decorator
 
 
+def staff_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        user = get_user(session.get("user_id"))
+        if not user:
+            return redirect(url_for("login", next=request.full_path))
+        session["display_name"], session["role"] = user["display_name"], user["role"]
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def manager_required(view):
+    @wraps(view)
+    @staff_required
+    def wrapped(*args, **kwargs):
+        if session.get("role") != "manager": abort(403)
+        return view(*args, **kwargs)
+    return wrapped
+
+
 def binding_token():
     if "device_binding" not in session:
         session["device_binding"] = secrets.token_urlsafe(24)
@@ -56,6 +79,25 @@ def report_authorized(report):
 
 @app.get("/")
 def welcome(): return render_template("welcome.html")
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        user = authenticate(request.form.get("username", "").strip(), request.form.get("password", ""))
+        if user:
+            session.clear(); session["user_id"] = user["id"]; session["display_name"] = user["display_name"]; session["role"] = user["role"]
+            destination = request.form.get("next", "")
+            if destination.startswith("/") and not destination.startswith("//"):
+                return redirect(destination)
+            return redirect(url_for("manage_dashboard"))
+        flash("שם משתמש או סיסמה אינם נכונים", "error")
+    return render_template("login.html", next=request.args.get("next", ""))
+
+
+@app.post("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("welcome"))
 
 @app.get("/start")
 def start(): return render_template("start.html")
@@ -136,18 +178,25 @@ def reporter_message(report_id):
 
 
 @app.get("/manage")
+@staff_required
 def manage_dashboard():
-    return render_template("manage.html", reports=list_reports(request.args.get("status", "all")), active_status=request.args.get("status", "all"))
+    reports = list_reports(request.args.get("status", "all"))
+    if session.get("role") == "technician":
+        reports = [report for report in reports if report["assigned_to"] == session.get("display_name")]
+    return render_template("manage.html", reports=reports, active_status=request.args.get("status", "all"))
 
 
 @app.get("/manage/report/<int:report_id>")
+@staff_required
 def manage_report(report_id):
     report, files = get_report(report_id)
     if not report: abort(404)
+    if session.get("role") == "technician" and report["assigned_to"] != session.get("display_name"): abort(403)
     return render_template("manage_report.html", report=report, files=files, messages=get_messages(report_id))
 
 
 @app.post("/manage/report/<int:report_id>/workflow")
+@manager_required
 def manage_workflow(report_id):
     status = request.form.get("status", "new")
     if status not in WORKFLOW_STATUSES: abort(400)
@@ -156,10 +205,12 @@ def manage_workflow(report_id):
 
 
 @app.post("/manage/report/<int:report_id>/messages")
+@staff_required
 def manager_message(report_id):
     report, _ = get_report(report_id)
     if not report: abort(404)
-    body = request.form.get("body", "").strip(); author = request.form.get("author_name", "מוקד אחזקה").strip()[:80]
+    if session.get("role") == "technician" and report["assigned_to"] != session.get("display_name"): abort(403)
+    body = request.form.get("body", "").strip(); author = session.get("display_name", "מוקד אחזקה")
     if 1 <= len(body) <= 1000:
         add_message(report_id, author or "מוקד אחזקה", "manager", body)
     return redirect(url_for("manage_report", report_id=report_id))
