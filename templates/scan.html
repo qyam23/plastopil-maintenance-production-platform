@@ -1,5 +1,6 @@
 {% extends 'base.html' %}{% block content %}
-<header><a href="{{ url_for('start') }}" class="back">→ חזרה</a><p class="eyebrow">סריקת מכונה</p><h1>כוונו את המצלמה ל־QR</h1></header>
-<div id="qr-reader" class="scanner-box"></div><p id="scanner-message" class="scanner-message">המצלמה תיפתח לאחר אישור ההרשאה.</p>
+<header><a href="{{ url_for('start') }}" class="back">← חזרה</a><p class="eyebrow">סריקת מכונה</p><h1>כוונו את המצלמה ל־QR</h1></header>
+<div id="qr-reader" class="scanner-box"></div><p id="scanner-message" class="scanner-message" aria-live="polite">המצלמה תיפתח לאחר אישור ההרשאה.</p>
+<section class="manual-scan" aria-label="הזנת קוד מיקום ידנית"><label>לא מצליחים לסרוק? הזינו את קוד המיקום<input id="manual-location" type="text" maxlength="120" autocomplete="off" placeholder="לדוגמה: PLASTOPIL-EXTRUSION-LINE14"></label><button id="manual-location-submit" class="button secondary" type="button">המשך לדיווח</button></section>
 <a class="button secondary" href="{{ url_for('report_new') }}">דיווח ישיר</a>
-{% endblock %}{% block scripts %}<script src="https://unpkg.com/html5-qrcode" defer></script><script src="{{ url_for('static', filename='js/scanner.js') }}" defer></script>{% endblock %}
+{% endblock %}{% block scripts %}<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" defer></script><script src="{{ url_for('static', filename='js/scanner.js') }}" defer></script>{% endblock %}
