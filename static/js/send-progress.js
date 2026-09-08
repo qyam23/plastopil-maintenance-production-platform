@@ -8,11 +8,13 @@
         event.preventDefault();
         return;
       }
+      event.preventDefault();
       button.dataset.sending = 'true';
       button.classList.add('is-sending');
       button.disabled = true;
       const label = button.querySelector('.button-label');
       if (label) label.textContent = 'שולחים…';
+      window.setTimeout(() => form.submit(), 760);
     });
   });
 })();
