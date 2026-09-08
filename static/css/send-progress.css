@@ -1,0 +1,30 @@
+.send-progress-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  transition: color .18s ease, background .18s ease;
+}
+
+.send-progress-button::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 0;
+  background: #20a66b;
+  z-index: -1;
+  transition: width .75s cubic-bezier(.2, .8, .2, 1);
+}
+
+.send-progress-button.is-sending {
+  cursor: wait;
+  pointer-events: none;
+  color: #fff;
+  background: #eaf3ee;
+}
+
+.send-progress-button.is-sending::before { width: 100%; }
+.send-progress-button .button-label { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .send-progress-button::before { transition-duration: .01ms; }
+}
