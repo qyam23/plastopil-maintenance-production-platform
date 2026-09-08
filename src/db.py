@@ -73,7 +73,8 @@ SQLITE_SCHEMA = [
       id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL,
       file_type TEXT NOT NULL CHECK(file_type IN ('image','video','audio')),
       local_path TEXT NOT NULL, original_filename TEXT NOT NULL, mime_type TEXT,
-      file_size INTEGER NOT NULL, content BLOB, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      file_size INTEGER NOT NULL, content BLOB, drive_file_id TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
     )""",
     """CREATE TABLE IF NOT EXISTS reporter_devices (
@@ -118,7 +119,8 @@ POSTGRES_SCHEMA = [
       id BIGSERIAL PRIMARY KEY, report_id BIGINT NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
       file_type TEXT NOT NULL CHECK(file_type IN ('image','video','audio')),
       local_path TEXT NOT NULL, original_filename TEXT NOT NULL, mime_type TEXT,
-      file_size BIGINT NOT NULL, content BYTEA, created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      file_size BIGINT NOT NULL, content BYTEA, drive_file_id TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""",
     """CREATE TABLE IF NOT EXISTS reporter_devices (
       device_id TEXT PRIMARY KEY, reporter_name TEXT NOT NULL, device_label TEXT,
@@ -173,6 +175,7 @@ def init_db():
                 _ensure_sqlite_column(conn, "reports", column, definition)
             _ensure_sqlite_column(conn, "reporter_devices", "binding_token", "TEXT")
             _ensure_sqlite_column(conn, "report_files", "content", "BLOB")
+            _ensure_sqlite_column(conn, "report_files", "drive_file_id", "TEXT")
         else:
             for statement in (
                 "ALTER TABLE reports ADD COLUMN IF NOT EXISTS public_token TEXT",
@@ -182,6 +185,7 @@ def init_db():
                 "ALTER TABLE reports ADD COLUMN IF NOT EXISTS review_note TEXT",
                 "ALTER TABLE reporter_devices ADD COLUMN IF NOT EXISTS binding_token TEXT",
                 "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS content BYTEA",
+                "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS drive_file_id TEXT",
             ):
                 conn.execute(statement)
         for row in conn.execute("SELECT device_id FROM reporter_devices WHERE binding_token IS NULL OR binding_token = ''"):

@@ -14,6 +14,7 @@ from src.push_notifications import notify_reporter, push_enabled, save_subscript
 from dotenv import load_dotenv
 from src.db import init_db
 from src.location_resolver import normalize_location_code, resolve_location
+from src.google_drive_storage import download_file as download_drive_file, drive_enabled, upload_file as upload_drive_file
 from src.reporter_devices import get_device, save_device
 from src.reports import add_file, add_message, create_report, get_messages, get_report, get_report_file, list_reports, update_report_workflow
 from src.storage import delete_stored, save_upload, validate_upload
@@ -180,7 +181,9 @@ def report_create():
     try:
         for upload in uploads:
             stored = save_upload(upload)
-            try: add_file(report_id, stored)
+            try:
+                drive_file_id = upload_drive_file(stored[5], stored[2], stored[3]) if drive_enabled() else None
+                add_file(report_id, stored, drive_file_id=drive_file_id, persist_content=not drive_file_id)
             except Exception:
                 delete_stored(stored[1]); raise
     except Exception:
@@ -304,8 +307,10 @@ def report_file(report_id, file_id):
     report, _ = get_report(report_id)
     file = get_report_file(report_id, file_id)
     if not report or not file or not report_authorized(report): abort(404)
-    # New cloud uploads live in the database. This survives Render restarts and
-    # deployments; local-path fallback keeps earlier desktop reports readable.
+    # Drive is the primary cloud store. Database content and local paths remain
+    # as backwards-compatible fallbacks for older reports and desktop mode.
+    if file["drive_file_id"]:
+        return send_file(io.BytesIO(download_drive_file(file["drive_file_id"])), mimetype=file["mime_type"], download_name=file["original_filename"])
     if file["content"]:
         return send_file(io.BytesIO(bytes(file["content"])), mimetype=file["mime_type"], download_name=file["original_filename"])
     path = Path(file["local_path"])

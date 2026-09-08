@@ -19,10 +19,14 @@ def create_report(report_type, text_body, location_code=None, location=None, rep
         return cursor.fetchone()["id"] if conn.dialect == "postgres" else cursor.lastrowid
 
 
-def add_file(report_id, file_data):
+def add_file(report_id, file_data, drive_file_id=None, persist_content=True):
+    kind, local_path, original_filename, mime_type, file_size, content = file_data
     with connection() as conn:
-        conn.execute("""INSERT INTO report_files (report_id, file_type, local_path, original_filename, mime_type, file_size, content)
-                      VALUES (?, ?, ?, ?, ?, ?, ?)""", (report_id, *file_data))
+        conn.execute("""INSERT INTO report_files
+                      (report_id, file_type, local_path, original_filename, mime_type, file_size, content, drive_file_id)
+                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                     (report_id, kind, local_path, original_filename, mime_type, file_size,
+                      content if persist_content else None, drive_file_id))
 
 
 def get_report(report_id):
