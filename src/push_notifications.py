@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 from pywebpush import WebPushException, webpush
@@ -30,6 +31,15 @@ def save_subscription(device_id, subscription):
         )
 
 
+def has_subscription(device_id):
+    """Return whether this reporting device has a server-side Push target."""
+    with connection() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM push_subscriptions WHERE device_id = ?", (device_id,)
+        ).fetchone()
+    return bool(row)
+
+
 def notify_reporter(report, title, body):
     """Best-effort Web Push; a failed subscription must not block workflow."""
     if not push_enabled() or not report or not report["reporter_id"]:
@@ -52,6 +62,7 @@ def notify_reporter(report, title, body):
         )
         return 1
     except (WebPushException, RequestException, ValueError, KeyError, json.JSONDecodeError):
+        logging.warning("Push delivery failed for report %s; removing stale subscription", report["id"])
         with connection() as conn:
             conn.execute("DELETE FROM push_subscriptions WHERE device_id = ?", (report["reporter_id"],))
         return 0

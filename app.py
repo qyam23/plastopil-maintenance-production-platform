@@ -10,7 +10,7 @@ from flask import Flask, abort, flash, jsonify, redirect, render_template, reque
 from werkzeug.urls import urlsplit
 from src.auth import authenticate, get_user, seed_initial_users
 from src.qrcodes import create_qrcode, get_qrcode, list_qrcodes, make_qr_png
-from src.push_notifications import notify_reporter, push_enabled, save_subscription, vapid_public_key
+from src.push_notifications import has_subscription, notify_reporter, push_enabled, save_subscription, vapid_public_key
 from dotenv import load_dotenv
 from src.db import init_db
 from src.location_resolver import normalize_location_code, resolve_location
@@ -160,6 +160,15 @@ def push_subscription_save():
     return jsonify({"ok": True})
 
 
+@app.get("/api/push-subscriptions/status")
+def push_subscription_status():
+    """Let a reporting device verify that its Push target reached the server."""
+    device_id = request.args.get("device_id", "").strip()
+    if not get_device(device_id, binding_token()):
+        return jsonify({"error": "Unknown reporter device"}), 403
+    return jsonify({"configured": push_enabled(), "subscribed": has_subscription(device_id)})
+
+
 @app.post("/report/new")
 @rate_limit(20)
 def report_create():
@@ -204,6 +213,14 @@ def report_detail(report_id):
     report, files = get_report(report_id)
     if not report or not report_authorized(report): abort(404)
     return render_template("report_detail.html", report=report, files=files, messages=get_messages(report_id), token=report["public_token"])
+
+
+@app.get("/api/report/<int:report_id>/updates")
+def report_updates(report_id):
+    """A small authenticated heartbeat used by the reporter's open call page."""
+    report, _ = get_report(report_id)
+    if not report or not report_authorized(report): abort(404)
+    return jsonify({"updated_at": str(report["updated_at"])})
 
 
 @app.post("/report/<int:report_id>/messages")

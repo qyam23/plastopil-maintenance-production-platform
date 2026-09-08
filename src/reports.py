@@ -66,6 +66,9 @@ def add_message(report_id, author_name, author_role, body):
     with connection() as conn:
         conn.execute("INSERT INTO report_messages (report_id, author_name, author_role, body) VALUES (?, ?, ?, ?)",
                      (report_id, author_name, author_role, body))
+        # The reporter's open page polls this timestamp to display replies and
+        # workflow changes without requiring a manual refresh.
+        conn.execute("UPDATE reports SET updated_at=CURRENT_TIMESTAMP WHERE id=?", (report_id,))
     if author_role in {"manager", "technician"}:
         from .push_notifications import notify_reporter
         report, _ = get_report(report_id)

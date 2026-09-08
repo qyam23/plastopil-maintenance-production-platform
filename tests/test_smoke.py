@@ -24,6 +24,15 @@ def run():
         assert client.get(path).status_code == 200, path
     assert "ללא מיקום מזוהה" in client.get("/report/new?location=UNKNOWN").get_data(as_text=True)
     assert client.post("/api/reporter-devices", json=DEVICE).status_code == 200
+    original_push_enabled = application.push_enabled
+    application.push_enabled = lambda: True
+    try:
+        assert client.get(f"/api/push-subscriptions/status?device_id={DEVICE['device_id']}").get_json()["subscribed"] is False
+        subscription = {"endpoint":"https://push.example.test/subscription", "keys":{"p256dh":"test-key", "auth":"test-auth"}}
+        assert client.post("/api/push-subscriptions", json={"device_id":DEVICE["device_id"], "subscription":subscription}).status_code == 200
+        assert client.get(f"/api/push-subscriptions/status?device_id={DEVICE['device_id']}").get_json()["subscribed"] is True
+    finally:
+        application.push_enabled = original_push_enabled
     attacker = application.app.test_client()
     assert attacker.post("/api/reporter-devices", json=DEVICE).status_code == 403
     missing = client.post("/report/new", data={"report_type":"maintenance_request", "device_id":DEVICE["device_id"]}, follow_redirects=False)
@@ -33,6 +42,7 @@ def run():
     report_id = int(urlparse(response.headers["Location"]).path.rsplit("/", 1)[1]); token = token_from(response.headers["Location"])
     assert client.get(f"/report/{report_id}").status_code == 404
     assert client.get(f"/report/{report_id}?token={token}").status_code == 200
+    assert client.get(f"/api/report/{report_id}/updates?token={token}").status_code == 200
     named = client.post("/report/new", data={"report_type":"safety_near_miss", "text_body":"בדיקת בטיחות", "device_id":DEVICE["device_id"]}, follow_redirects=False)
     named_id = int(urlparse(named.headers["Location"]).path.rsplit("/", 1)[1]); report, _ = application.get_report(named_id)
     assert report["reporter_name"] == "ישראל ישראלי" and report["public_token"]
