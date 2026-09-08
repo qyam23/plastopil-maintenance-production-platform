@@ -21,8 +21,8 @@ def create_report(report_type, text_body, location_code=None, location=None, rep
 
 def add_file(report_id, file_data):
     with connection() as conn:
-        conn.execute("""INSERT INTO report_files (report_id, file_type, local_path, original_filename, mime_type, file_size)
-                      VALUES (?, ?, ?, ?, ?, ?)""", (report_id, *file_data))
+        conn.execute("""INSERT INTO report_files (report_id, file_type, local_path, original_filename, mime_type, file_size, content)
+                      VALUES (?, ?, ?, ?, ?, ?, ?)""", (report_id, *file_data))
 
 
 def get_report(report_id):

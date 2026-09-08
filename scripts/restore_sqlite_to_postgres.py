@@ -50,6 +50,7 @@ def create_schema(connection: psycopg.Connection) -> None:
         "ALTER TABLE reports ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMPTZ",
         "ALTER TABLE reports ADD COLUMN IF NOT EXISTS review_note TEXT",
         "ALTER TABLE reporter_devices ADD COLUMN IF NOT EXISTS binding_token TEXT",
+        "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS content BYTEA",
         "CREATE INDEX IF NOT EXISTS idx_report_files_report_id ON report_files(report_id)",
         "CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)",
         "CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id)",

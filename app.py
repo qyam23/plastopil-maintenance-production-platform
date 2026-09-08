@@ -1,4 +1,5 @@
 import hmac
+import io
 import os
 import secrets
 import time
@@ -303,6 +304,10 @@ def report_file(report_id, file_id):
     report, _ = get_report(report_id)
     file = get_report_file(report_id, file_id)
     if not report or not file or not report_authorized(report): abort(404)
+    # New cloud uploads live in the database. This survives Render restarts and
+    # deployments; local-path fallback keeps earlier desktop reports readable.
+    if file["content"]:
+        return send_file(io.BytesIO(bytes(file["content"])), mimetype=file["mime_type"], download_name=file["original_filename"])
     path = Path(file["local_path"])
     return send_from_directory(BASE_DIR / "uploads", str(path.relative_to("uploads")).replace("\\", "/"), mimetype=file["mime_type"])
 

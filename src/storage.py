@@ -40,8 +40,15 @@ def save_upload(upload):
     now = datetime.now(); folder = ROOT / f"{kind}s" / now.strftime("%Y") / now.strftime("%m"); folder.mkdir(parents=True, exist_ok=True)
     original = Path((upload.filename or "").replace("\\", "/")).name or f"{kind}.bin"
     stored = f"{uuid4().hex}_{secure_filename(original) or kind + '.bin'}"; destination = folder / stored
+    # Keep a local copy for the desktop mode, but also return the bytes so the
+    # cloud deployment can persist attachments in PostgreSQL. Render's local
+    # filesystem is ephemeral and is cleared when a new version is deployed.
+    upload.stream.seek(0)
+    content = upload.stream.read()
+    upload.stream.seek(0)
     upload.save(destination)
-    return (kind, str(destination.relative_to(ROOT.parent)).replace("\\", "/"), original, upload.mimetype or "application/octet-stream", destination.stat().st_size)
+    return (kind, str(destination.relative_to(ROOT.parent)).replace("\\", "/"), original,
+            upload.mimetype or "application/octet-stream", len(content), content)
 
 
 def delete_stored(local_path):
