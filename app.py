@@ -75,6 +75,10 @@ def binding_token():
 
 
 def report_authorized(report):
+    # Staff viewing a report in the management area may access its attachments
+    # without receiving the reporter's public token.
+    if get_user(session.get("user_id")):
+        return True
     supplied = request.args.get("token", "")
     return bool(supplied and report and hmac.compare_digest(supplied, report["public_token"]))
 
