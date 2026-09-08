@@ -29,10 +29,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const keyBytes = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=')), char => char.charCodeAt(0));
 
   button.addEventListener('click', async () => {
-    const reporter = identity();
-    if (!reporter?.device_id || !supported()) return;
+    if (!supported()) return;
     button.disabled = true; setStatus('מבקשים אישור להתראות…');
     try {
+      // Reconfirm the browser's device binding immediately before sending the
+      // subscription. This repairs identities carried over from an old session.
+      if (window.plastopilEnsureReporter && !await window.plastopilEnsureReporter()) throw new Error('identity');
+      const reporter = identity();
+      if (!reporter?.device_id) throw new Error('identity');
       const config = await fetch('/api/push/config').then(response => response.ok ? response.json() : Promise.reject());
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') throw new Error('permission');
@@ -44,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
       button.hidden = true; setStatus('התראות פעילות במכשיר זה.');
     } catch (error) {
       button.disabled = false;
-      setStatus(error.message === 'permission' ? 'לא אושרו התראות. אפשר לאשר אותן מאוחר יותר דרך הגדרות הדפדפן.' : 'לא הצלחנו להפעיל התראות. נסו שוב.');
+      setStatus(error.message === 'permission' ? 'לא אושרו התראות. אפשר לאשר אותן מאוחר יותר דרך הגדרות הדפדפן.' : error.message === 'identity' ? 'לא הצלחנו לאמת את המכשיר. רעננו את הדף ונסו שוב.' : 'לא הצלחנו להפעיל התראות. נסו שוב.');
     }
   });
   window.addEventListener('plastopil:identity-updated', () => { refresh(); });

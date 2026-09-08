@@ -36,6 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!response.ok) return false;
     identity = await response.json(); localStorage.setItem('plastopil_reporter', JSON.stringify(identity)); renderIdentity(); window.dispatchEvent(new Event('plastopil:identity-updated')); return true;
   };
+  // Other modules, such as Push, must not use a stale device id while this
+  // page is repairing an old browser-session binding.
+  window.plastopilEnsureReporter = async () => {
+    const current = JSON.parse(localStorage.getItem('plastopil_reporter') || 'null');
+    if (!current?.reporter_name) return false;
+    return saveIdentity(current.reporter_name, current.device_label || '');
+  };
   document.querySelector('#change-reporter').addEventListener('click', openIdentity);
   document.querySelector('#safety-change-reporter').addEventListener('click', openIdentity);
   document.querySelector('#save-reporter').addEventListener('click', async () => {
@@ -44,7 +51,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!await saveIdentity(name, deviceLabel.value.trim())) { alert('לא הצלחנו לשמור את פרטי המדווח. נסו שוב.'); }
   });
   renderIdentity();
-  if (identity?.reporter_name) saveIdentity(identity.reporter_name, identity.device_label || '');
+  if (identity?.reporter_name) window.plastopilReporterReady = window.plastopilEnsureReporter();
+  else window.plastopilReporterReady = Promise.resolve(false);
 
   document.querySelectorAll('input[name="report_type"]').forEach(input => input.addEventListener('change', () => {
     document.body.classList.remove('theme-safety', 'theme-maintenance', 'theme-quality');

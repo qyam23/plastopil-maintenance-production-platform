@@ -35,6 +35,15 @@ def run():
         application.push_enabled = original_push_enabled
     attacker = application.app.test_client()
     assert attacker.post("/api/reporter-devices", json=DEVICE).status_code == 403
+    repaired_device = {"device_id":f"repaired-{uuid.uuid4()}", "reporter_name":DEVICE["reporter_name"], "device_label":DEVICE["device_label"]}
+    assert attacker.post("/api/reporter-devices", json=repaired_device).status_code == 200
+    application.push_enabled = lambda: True
+    try:
+        subscription = {"endpoint":"https://push.example.test/repaired", "keys":{"p256dh":"test-key", "auth":"test-auth"}}
+        assert attacker.post("/api/push-subscriptions", json={"device_id":repaired_device["device_id"], "subscription":subscription}).status_code == 200
+        assert attacker.get(f"/api/push-subscriptions/status?device_id={repaired_device['device_id']}").get_json()["subscribed"] is True
+    finally:
+        application.push_enabled = original_push_enabled
     missing = client.post("/report/new", data={"report_type":"maintenance_request", "device_id":DEVICE["device_id"]}, follow_redirects=False)
     assert missing.status_code == 302
     response = client.post("/report/new", data={"report_type":"maintenance_request", "text_body":"בדיקת תקלה", "device_id":DEVICE["device_id"]}, follow_redirects=False)
