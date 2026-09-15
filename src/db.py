@@ -73,7 +73,7 @@ SQLITE_SCHEMA = [
       id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL,
       file_type TEXT NOT NULL CHECK(file_type IN ('image','video','audio')),
       local_path TEXT NOT NULL, original_filename TEXT NOT NULL, mime_type TEXT,
-      file_size INTEGER NOT NULL, content BLOB, drive_file_id TEXT,
+      file_size INTEGER NOT NULL, content BLOB, drive_file_id TEXT, action_id INTEGER,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(report_id) REFERENCES reports(id) ON DELETE CASCADE
     )""",
@@ -104,6 +104,33 @@ SQLITE_SCHEMA = [
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""",
+    """CREATE TABLE IF NOT EXISTS maintenance_actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL,
+      author_user_id INTEGER NOT NULL, author_name TEXT NOT NULL,
+      outcome TEXT NOT NULL CHECK(outcome IN ('in_progress','fixed','not_fixed','waiting_parts')),
+      work_done TEXT NOT NULL, parts TEXT, knowledge_note TEXT, root_cause TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(report_id) REFERENCES reports(id), FOREIGN KEY(author_user_id) REFERENCES users(id)
+    )""",
+    """CREATE TABLE IF NOT EXISTS maintenance_discussion (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL,
+      author_user_id INTEGER NOT NULL, author_name TEXT NOT NULL, body TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(report_id) REFERENCES reports(id), FOREIGN KEY(author_user_id) REFERENCES users(id)
+    )""",
+    """CREATE TABLE IF NOT EXISTS maintenance_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER NOT NULL,
+      actor_user_id INTEGER NOT NULL, actor_name TEXT NOT NULL,
+      event_type TEXT NOT NULL, detail TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(report_id) REFERENCES reports(id), FOREIGN KEY(actor_user_id) REFERENCES users(id)
+    )""",
+    """CREATE TABLE IF NOT EXISTS case_receipts (
+      report_id INTEGER NOT NULL, staff_user_id INTEGER NOT NULL,
+      viewed_at TEXT, acknowledged_at TEXT,
+      PRIMARY KEY(report_id,staff_user_id), FOREIGN KEY(report_id) REFERENCES reports(id),
+      FOREIGN KEY(staff_user_id) REFERENCES users(id)
+    )""",
 ]
 
 POSTGRES_SCHEMA = [
@@ -119,7 +146,7 @@ POSTGRES_SCHEMA = [
       id BIGSERIAL PRIMARY KEY, report_id BIGINT NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
       file_type TEXT NOT NULL CHECK(file_type IN ('image','video','audio')),
       local_path TEXT NOT NULL, original_filename TEXT NOT NULL, mime_type TEXT,
-      file_size BIGINT NOT NULL, content BYTEA, drive_file_id TEXT,
+      file_size BIGINT NOT NULL, content BYTEA, drive_file_id TEXT, action_id BIGINT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""",
     """CREATE TABLE IF NOT EXISTS reporter_devices (
@@ -147,6 +174,29 @@ POSTGRES_SCHEMA = [
       created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
     )""",
+    """CREATE TABLE IF NOT EXISTS maintenance_actions (
+      id BIGSERIAL PRIMARY KEY, report_id BIGINT NOT NULL REFERENCES reports(id),
+      author_user_id BIGINT NOT NULL REFERENCES users(id), author_name TEXT NOT NULL,
+      outcome TEXT NOT NULL CHECK(outcome IN ('in_progress','fixed','not_fixed','waiting_parts')),
+      work_done TEXT NOT NULL, parts TEXT, knowledge_note TEXT, root_cause TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )""",
+    """CREATE TABLE IF NOT EXISTS maintenance_discussion (
+      id BIGSERIAL PRIMARY KEY, report_id BIGINT NOT NULL REFERENCES reports(id),
+      author_user_id BIGINT NOT NULL REFERENCES users(id), author_name TEXT NOT NULL,
+      body TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )""",
+    """CREATE TABLE IF NOT EXISTS maintenance_events (
+      id BIGSERIAL PRIMARY KEY, report_id BIGINT NOT NULL REFERENCES reports(id),
+      actor_user_id BIGINT NOT NULL REFERENCES users(id), actor_name TEXT NOT NULL,
+      event_type TEXT NOT NULL, detail TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )""",
+    """CREATE TABLE IF NOT EXISTS case_receipts (
+      report_id BIGINT NOT NULL REFERENCES reports(id), staff_user_id BIGINT NOT NULL REFERENCES users(id),
+      viewed_at TIMESTAMPTZ, acknowledged_at TIMESTAMPTZ,
+      PRIMARY KEY(report_id,staff_user_id)
+    )""",
 ]
 
 
@@ -164,6 +214,9 @@ def init_db():
             "CREATE INDEX IF NOT EXISTS idx_report_files_report_id ON report_files(report_id)",
             "CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)",
             "CREATE INDEX IF NOT EXISTS idx_report_messages_report_id ON report_messages(report_id)",
+            "CREATE INDEX IF NOT EXISTS idx_maintenance_actions_report_id ON maintenance_actions(report_id)",
+            "CREATE INDEX IF NOT EXISTS idx_maintenance_discussion_report_id ON maintenance_discussion(report_id)",
+            "CREATE INDEX IF NOT EXISTS idx_maintenance_events_report_id ON maintenance_events(report_id)",
         ):
             conn.execute(statement)
         if conn.dialect == "sqlite":
@@ -171,11 +224,13 @@ def init_db():
                 ("public_token", "TEXT"), ("assigned_to", "TEXT"),
                 ("reporter_device_label", "TEXT"), ("assigned_at", "TEXT"),
                 ("review_note", "TEXT"),
+                ("archived_at", "TEXT"), ("archived_by", "TEXT"),
             ):
                 _ensure_sqlite_column(conn, "reports", column, definition)
             _ensure_sqlite_column(conn, "reporter_devices", "binding_token", "TEXT")
             _ensure_sqlite_column(conn, "report_files", "content", "BLOB")
             _ensure_sqlite_column(conn, "report_files", "drive_file_id", "TEXT")
+            _ensure_sqlite_column(conn, "report_files", "action_id", "INTEGER")
         else:
             for statement in (
                 "ALTER TABLE reports ADD COLUMN IF NOT EXISTS public_token TEXT",
@@ -183,9 +238,12 @@ def init_db():
                 "ALTER TABLE reports ADD COLUMN IF NOT EXISTS reporter_device_label TEXT",
                 "ALTER TABLE reports ADD COLUMN IF NOT EXISTS assigned_at TIMESTAMPTZ",
                 "ALTER TABLE reports ADD COLUMN IF NOT EXISTS review_note TEXT",
+                "ALTER TABLE reports ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ",
+                "ALTER TABLE reports ADD COLUMN IF NOT EXISTS archived_by TEXT",
                 "ALTER TABLE reporter_devices ADD COLUMN IF NOT EXISTS binding_token TEXT",
                 "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS content BYTEA",
                 "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS drive_file_id TEXT",
+                "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS action_id BIGINT",
             ):
                 conn.execute(statement)
         for row in conn.execute("SELECT device_id FROM reporter_devices WHERE binding_token IS NULL OR binding_token = ''"):

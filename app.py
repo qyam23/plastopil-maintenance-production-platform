@@ -17,6 +17,7 @@ from src.location_resolver import normalize_location_code, resolve_location
 from src.google_drive_storage import download_file as download_drive_file, drive_enabled, upload_file as upload_drive_file
 from src.reporter_devices import get_device, save_device
 from src.reports import add_file, add_message, create_report, get_messages, get_report, get_report_file, list_reports, update_report_workflow
+from src.maintenance import add_action, add_discussion, add_event, archive_report, dashboard_snapshot, get_case_history, list_journal, mark_receipt, receipt_state, restore_report, search_knowledge
 from src.storage import delete_stored, save_upload, validate_upload
 from src.telegram_service import notify
 
@@ -79,8 +80,10 @@ def binding_token():
 def report_authorized(report):
     # Staff viewing a report in the management area may access its attachments
     # without receiving the reporter's public token.
-    if get_user(session.get("user_id")):
-        return True
+    user = get_user(session.get("user_id"))
+    if user and report:
+        if user["role"] == "manager" or report["assigned_to"] == user["display_name"]:
+            return True
     supplied = request.args.get("token", "")
     return bool(supplied and report and hmac.compare_digest(supplied, report["public_token"]))
 
@@ -237,9 +240,38 @@ def reporter_message(report_id):
 @staff_required
 def manage_dashboard():
     reports = list_reports(request.args.get("status", "all"))
+    reports = [report for report in reports if not report["archived_at"]]
     if session.get("role") == "technician":
         reports = [report for report in reports if report["assigned_to"] == session.get("display_name")]
     return render_template("manage.html", reports=reports, active_status=request.args.get("status", "all"))
+
+
+@app.get("/manage/journal")
+@staff_required
+def manage_journal():
+    user = get_user(session["user_id"])
+    status = request.args.get("status", "all")
+    if status not in {"all", "open", "closed"}: abort(400)
+    return render_template("maintenance_journal.html", reports=list_journal(user, status), active_status=status)
+
+
+@app.get("/manage/maintenance-dashboard")
+@manager_required
+def maintenance_dashboard():
+    return render_template("maintenance_dashboard.html", stats=dashboard_snapshot(), reports=list_journal(status="open")[:12])
+
+
+@app.get("/manage/knowledge")
+@staff_required
+def maintenance_knowledge():
+    return render_template("maintenance_knowledge.html", records=search_knowledge(request.args.get("q", "")), query=request.args.get("q", "")[:120])
+
+
+def staff_case(report_id):
+    report, files = get_report(report_id)
+    if not report: abort(404)
+    if session.get("role") == "technician" and report["assigned_to"] != session.get("display_name"): abort(403)
+    return report, files
 
 
 @app.route("/manage/qr", methods=["GET", "POST"])
@@ -289,18 +321,111 @@ def qrcode_print(qr_id):
 @app.get("/manage/report/<int:report_id>")
 @staff_required
 def manage_report(report_id):
-    report, files = get_report(report_id)
-    if not report: abort(404)
-    if session.get("role") == "technician" and report["assigned_to"] != session.get("display_name"): abort(403)
-    return render_template("manage_report.html", report=report, files=files, messages=get_messages(report_id))
+    report, files = staff_case(report_id)
+    actions, discussion, events = get_case_history(report_id)
+    return render_template("manage_report.html", report=report, files=files, messages=get_messages(report_id),
+                           actions=actions, discussion=discussion, events=events)
+
+
+@app.get("/manage/report/<int:report_id>/case")
+@staff_required
+def digital_case(report_id):
+    report, files = staff_case(report_id)
+    actions, discussion, events = get_case_history(report_id)
+    return render_template("digital_case.html", report=report, files=files, messages=get_messages(report_id),
+                           actions=actions, discussion=discussion, events=events,
+                           receipt=receipt_state(report_id, session["user_id"]))
+
+
+@app.post("/manage/report/<int:report_id>/case/receipt")
+@staff_required
+def digital_case_receipt(report_id):
+    staff_case(report_id)
+    state = mark_receipt(report_id, get_user(session["user_id"]), request.form.get("action") == "acknowledge")
+    return jsonify({"viewed_at": str(state["viewed_at"]), "acknowledged_at": str(state["acknowledged_at"] or "")})
+
+
+@app.post("/manage/report/<int:report_id>/actions")
+@staff_required
+def maintenance_action_create(report_id):
+    report, _ = staff_case(report_id)
+    if report["archived_at"]: abort(409)
+    user = get_user(session["user_id"])
+    outcome = request.form.get("outcome", "")
+    work_done = request.form.get("work_done", "").strip()[:3000]
+    parts = request.form.get("parts", "").strip()[:500]
+    knowledge_note = request.form.get("knowledge_note", "").strip()[:1500]
+    root_cause = request.form.get("root_cause", "").strip()[:500]
+    uploads = [upload for upload in request.files.getlist("work_attachments") if upload and upload.filename]
+    try:
+        for upload in uploads: validate_upload(upload)
+    except ValueError as error:
+        flash(str(error), "error")
+        return redirect(url_for("manage_report", report_id=report_id) + "#work-log")
+    if len(work_done) < 5:
+        flash("יש לתאר מה בוצע בחמש אותיות לפחות", "error")
+    else:
+        try:
+            action_id = add_action(report_id, user, outcome, work_done, parts, knowledge_note, root_cause)
+            for upload in uploads:
+                stored = save_upload(upload)
+                try:
+                    drive_file_id = upload_drive_file(stored[5], stored[2], stored[3]) if drive_enabled() else None
+                    add_file(report_id, stored, drive_file_id=drive_file_id, persist_content=not drive_file_id, action_id=action_id)
+                except Exception:
+                    delete_stored(stored[1]); raise
+            flash("העבודה נשמרה ביומן ובבסיס הידע", "success")
+        except ValueError as error:
+            flash(str(error), "error")
+        except Exception:
+            flash("העבודה נשמרה, אך לא כל הקבצים המצורפים הועלו. בדקו את התיק.", "error")
+    return redirect(url_for("manage_report", report_id=report_id) + "#work-log")
+
+
+@app.post("/manage/report/<int:report_id>/discussion")
+@staff_required
+def maintenance_discussion_create(report_id):
+    report, _ = staff_case(report_id)
+    if report["archived_at"]: abort(409)
+    body = request.form.get("body", "").strip()[:2000]
+    if len(body) >= 2:
+        add_discussion(report_id, get_user(session["user_id"]), body)
+    else:
+        flash("כתבו הודעה מקצועית לפני השליחה", "error")
+    return redirect(url_for("manage_report", report_id=report_id) + "#internal-discussion")
+
+
+@app.post("/manage/report/<int:report_id>/archive")
+@manager_required
+def maintenance_archive(report_id):
+    report, _ = staff_case(report_id)
+    if report["status"] != "resolved":
+        flash("אפשר להעביר לארכיון רק קריאה שנסגרה", "error")
+        return redirect(url_for("manage_report", report_id=report_id))
+    archive_report(report_id, get_user(session["user_id"]))
+    return redirect(url_for("manage_journal"))
+
+
+@app.post("/manage/report/<int:report_id>/restore")
+@manager_required
+def maintenance_restore(report_id):
+    staff_case(report_id)
+    restore_report(report_id, get_user(session["user_id"]))
+    return redirect(url_for("manage_report", report_id=report_id))
 
 
 @app.post("/manage/report/<int:report_id>/workflow")
 @manager_required
 def manage_workflow(report_id):
+    prior, _ = staff_case(report_id)
+    if prior["archived_at"]: abort(409)
     status = request.form.get("status", "new")
     if status not in WORKFLOW_STATUSES: abort(400)
-    update_report_workflow(report_id, status, request.form.get("assigned_to", "").strip()[:80], request.form.get("review_note", "").strip()[:1000])
+    assigned_to = request.form.get("assigned_to", "").strip()[:80]
+    review_note = request.form.get("review_note", "").strip()[:1000]
+    update_report_workflow(report_id, status, assigned_to, review_note)
+    if status != prior["status"] or assigned_to != (prior["assigned_to"] or "") or review_note != (prior["review_note"] or ""):
+        add_event(report_id, get_user(session["user_id"]), "workflow", f"{prior['status']} → {status}; מטפל: {assigned_to or 'לא הוקצה'}; {review_note}")
     report, _ = get_report(report_id)
     status_labels = {"new":"התקבלה", "reviewed":"נבדקה", "assigned":"הועברה לטיפול", "in_progress":"בטיפול", "resolved":"נסגרה"}
     notify_reporter(report, "PLASTOPIL — עדכון לקריאה", f"קריאה #{report_id}: {status_labels[status]}.")
@@ -310,12 +435,11 @@ def manage_workflow(report_id):
 @app.post("/manage/report/<int:report_id>/messages")
 @staff_required
 def manager_message(report_id):
-    report, _ = get_report(report_id)
-    if not report: abort(404)
-    if session.get("role") == "technician" and report["assigned_to"] != session.get("display_name"): abort(403)
+    report, _ = staff_case(report_id)
+    if report["archived_at"]: abort(409)
     body = request.form.get("body", "").strip(); author = session.get("display_name", "מוקד אחזקה")
     if 1 <= len(body) <= 1000:
-        add_message(report_id, author or "מוקד אחזקה", "manager", body)
+        add_message(report_id, author or "מוקד אחזקה", session.get("role", "manager"), body)
     return redirect(url_for("manage_report", report_id=report_id))
 
 
