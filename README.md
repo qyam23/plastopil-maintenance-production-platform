@@ -2,6 +2,37 @@
 
 יישום דיווחים נייד לעובדים, עם מוקד ניהול, יומן אחזקה, דשבורד ובסיס ידע לעבודות טכנאים.
 
+## קישורים לאפליקציה
+
+דיווח עובד / מסך ראשי  
+https://plastopil-maintenance-production-platform.onrender.com/
+
+סריקת QR  
+https://plastopil-maintenance-production-platform.onrender.com/scan
+
+דיווח חדש ישיר  
+https://plastopil-maintenance-production-platform.onrender.com/report/new
+
+ניהול קריאות  
+https://plastopil-maintenance-production-platform.onrender.com/manage
+
+יומן אחזקה  
+https://plastopil-maintenance-production-platform.onrender.com/manage/journal
+
+דשבורד אחזקה יומי  
+https://plastopil-maintenance-production-platform.onrender.com/manage/maintenance-dashboard
+
+בסיס ידע — תקלות ופתרונות  
+https://plastopil-maintenance-production-platform.onrender.com/manage/knowledge
+
+ניהול והדפסת QR  
+https://plastopil-maintenance-production-platform.onrender.com/manage/qr
+
+התחברות מנהל / טכנאי  
+https://plastopil-maintenance-production-platform.onrender.com/login
+
+תיק דיווח דיגיטלי נפתח מתוך קריאה מסוימת במסך הניהול; הכתובת שלו כוללת את מספר הקריאה (`/manage/report/<id>/case`) ולכן אינה קישור כללי קבוע. מסכי הניהול מחייבים התחברות, והדשבורד זמין למנהל בלבד.
+
 ## מסכי אחזקה חדשים
 
 - `/manage/journal` — יומן קריאות. פתוחות תמיד לפני סגורות; סגורות נשארות בהיסטוריה.
