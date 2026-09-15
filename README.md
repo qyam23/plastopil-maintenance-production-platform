@@ -4,31 +4,40 @@
 
 ## קישורים לאפליקציה
 
-דיווח עובד / מסך ראשי  
+דיווח עובד / מסך ראשי
+
 https://plastopil-maintenance-production-platform.onrender.com/
 
-סריקת QR  
+סריקת QR
+
 https://plastopil-maintenance-production-platform.onrender.com/scan
 
-דיווח חדש ישיר  
+דיווח חדש ישיר
+
 https://plastopil-maintenance-production-platform.onrender.com/report/new
 
-ניהול קריאות  
+ניהול קריאות
+
 https://plastopil-maintenance-production-platform.onrender.com/manage
 
-יומן אחזקה  
+יומן אחזקה
+
 https://plastopil-maintenance-production-platform.onrender.com/manage/journal
 
-דשבורד אחזקה יומי  
+דשבורד אחזקה יומי
+
 https://plastopil-maintenance-production-platform.onrender.com/manage/maintenance-dashboard
 
-בסיס ידע — תקלות ופתרונות  
+בסיס ידע — תקלות ופתרונות
+
 https://plastopil-maintenance-production-platform.onrender.com/manage/knowledge
 
-ניהול והדפסת QR  
+ניהול והדפסת QR
+
 https://plastopil-maintenance-production-platform.onrender.com/manage/qr
 
-התחברות מנהל / טכנאי  
+התחברות מנהל / טכנאי
+
 https://plastopil-maintenance-production-platform.onrender.com/login
 
 תיק דיווח דיגיטלי נפתח מתוך קריאה מסוימת במסך הניהול; הכתובת שלו כוללת את מספר הקריאה (`/manage/report/<id>/case`) ולכן אינה קישור כללי קבוע. מסכי הניהול מחייבים התחברות, והדשבורד זמין למנהל בלבד.
