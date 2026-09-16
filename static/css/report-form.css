@@ -1,0 +1,65 @@
+.type-card b small {
+  display: block;
+  margin-top: 5px;
+  color: #6c7880;
+  font-size: 12px;
+}
+
+.type-card.coming-soon {
+  cursor: not-allowed;
+  opacity: .62;
+  background: #edf1f3;
+  border-style: dashed;
+}
+
+.type-card.coming-soon input { cursor: not-allowed; }
+.incident-description { display: block; }
+.incident-description > strong { display: block; margin: 0 0 9px; }
+.incident-description > strong span { color: var(--red); }
+.incident-description > small { display: block; margin-top: 6px; color: #5d7180; }
+
+.required-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #a92f28;
+  color: #fff;
+  font-size: 12px;
+}
+
+.push-panel.contact-ready { border-color: #45a77b; background: #e8f7ef; }
+.push-panel.needs-contact { border-color: #d98b20; background: #fff4d8; }
+
+.upload-progress-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.upload-progress-button > * { position: relative; z-index: 2; }
+.upload-progress-fill {
+  position: absolute;
+  z-index: 1;
+  inset: 0 0 0 auto;
+  width: 0;
+  background: #20a66b;
+  transition: width .18s ease;
+}
+
+.upload-progress-button.is-uploading { cursor: wait; }
+.upload-progress-button.is-complete .upload-progress-fill { background: #14844f; }
+.upload-progress-percent { display: none; font-variant-numeric: tabular-nums; }
+.upload-progress-button.is-uploading .send-arrow { display: none; }
+.upload-progress-button.is-uploading .upload-progress-percent { display: inline; }
+.upload-progress-status {
+  min-height: 24px;
+  margin: 8px 0 0;
+  text-align: center;
+  color: #38566c;
+  font-weight: bold;
+}
+.upload-progress-status.success { color: #0c7045; }
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-progress-fill { transition-duration: .01ms; }
+}

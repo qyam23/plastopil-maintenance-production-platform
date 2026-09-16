@@ -7,14 +7,15 @@ def create_report(report_type, text_body, location_code=None, location=None, rep
     reporter = reporter or {}
     token = secrets.token_urlsafe(24)
     with connection() as conn:
-        query = """INSERT INTO reports (report_type, text_body, site, department, machine, location_code, reporter_id, reporter_name, reporter_device_label, public_token)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+        query = """INSERT INTO reports (report_type, text_body, site, department, machine, location_code, reporter_id, reporter_name, reporter_device_label, reporter_contact, public_token)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
         if conn.dialect == "postgres":
             query += " RETURNING id"
         cursor = conn.execute(
             query,
             (report_type, text_body, location.get("site"), location.get("department"), location.get("machine"),
-             location_code, reporter.get("device_id"), reporter.get("reporter_name"), reporter.get("device_label"), token),
+             location_code, reporter.get("device_id"), reporter.get("reporter_name"), reporter.get("device_label"),
+             reporter.get("contact_detail"), token),
         )
         return cursor.fetchone()["id"] if conn.dialect == "postgres" else cursor.lastrowid
 

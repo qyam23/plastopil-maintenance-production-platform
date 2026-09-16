@@ -29,7 +29,7 @@ def run():
     worker = application.app.test_client()
     manager = application.app.test_client()
     technician = application.app.test_client()
-    device = {"device_id": "isolated-maintenance-device", "reporter_name": "Test Worker", "device_label": "Test phone"}
+    device = {"device_id": "isolated-maintenance-device", "reporter_name": "Test Worker", "device_label": "Test phone", "contact_detail": "Test contact"}
     assert worker.post("/api/reporter-devices", json=device).status_code == 200
     submitted = worker.post("/report/new", data={"report_type": "maintenance_request", "text_body": "Gear motor makes noise", "device_id": device["device_id"]})
     assert submitted.status_code == 302

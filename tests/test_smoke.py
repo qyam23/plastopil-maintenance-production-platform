@@ -11,7 +11,7 @@ os.environ.setdefault("SECRET_KEY", "test-only-secret-key")
 import app as application
 
 
-DEVICE = {"device_id":f"test-device-{uuid.uuid4()}", "reporter_name":"ישראל ישראלי", "device_label":"טלפון בדיקה"}
+DEVICE = {"device_id":f"test-device-{uuid.uuid4()}", "reporter_name":"ישראל ישראלי", "device_label":"טלפון בדיקה", "contact_detail":"050-0000000"}
 
 
 def token_from(location):
@@ -22,6 +22,9 @@ def run():
     client = application.app.test_client()
     for path in ("/", "/start", "/scan", "/report/new", "/report/new?location=PLASTOPIL-EXTRUSION-LINE14"):
         assert client.get(path).status_code == 200, path
+    form_html = client.get("/report/new").get_data(as_text=True)
+    assert "COMING SOON" in form_html and 'value="process_quality" disabled' in form_html
+    assert 'name="text_body"' in form_html and "required" in form_html
     assert "ללא מיקום מזוהה" in client.get("/report/new?location=UNKNOWN").get_data(as_text=True)
     assert client.post("/api/reporter-devices", json=DEVICE).status_code == 200
     original_push_enabled = application.push_enabled
@@ -35,7 +38,7 @@ def run():
         application.push_enabled = original_push_enabled
     attacker = application.app.test_client()
     assert attacker.post("/api/reporter-devices", json=DEVICE).status_code == 403
-    repaired_device = {"device_id":f"repaired-{uuid.uuid4()}", "reporter_name":DEVICE["reporter_name"], "device_label":DEVICE["device_label"]}
+    repaired_device = {"device_id":f"repaired-{uuid.uuid4()}", "reporter_name":DEVICE["reporter_name"], "device_label":DEVICE["device_label"], "contact_detail":"WhatsApp: ישראל"}
     assert attacker.post("/api/reporter-devices", json=repaired_device).status_code == 200
     application.push_enabled = lambda: True
     try:
@@ -46,6 +49,8 @@ def run():
         application.push_enabled = original_push_enabled
     missing = client.post("/report/new", data={"report_type":"maintenance_request", "device_id":DEVICE["device_id"]}, follow_redirects=False)
     assert missing.status_code == 302
+    unavailable = client.post("/report/new", data={"report_type":"process_quality", "text_body":"בדיקת איכות", "device_id":DEVICE["device_id"]}, follow_redirects=True)
+    assert "יש לבחור סוג דיווח" in unavailable.get_data(as_text=True)
     response = client.post("/report/new", data={"report_type":"maintenance_request", "text_body":"בדיקת תקלה", "device_id":DEVICE["device_id"]}, follow_redirects=False)
     assert response.status_code == 302 and "/report/success/" in response.headers["Location"]
     report_id = int(urlparse(response.headers["Location"]).path.rsplit("/", 1)[1]); token = token_from(response.headers["Location"])
@@ -54,10 +59,15 @@ def run():
     assert client.get(f"/api/report/{report_id}/updates?token={token}").status_code == 200
     named = client.post("/report/new", data={"report_type":"safety_near_miss", "text_body":"בדיקת בטיחות", "device_id":DEVICE["device_id"]}, follow_redirects=False)
     named_id = int(urlparse(named.headers["Location"]).path.rsplit("/", 1)[1]); report, _ = application.get_report(named_id)
-    assert report["reporter_name"] == "ישראל ישראלי" and report["public_token"]
-    photo = client.post("/report/new", data={"report_type":"safety_near_miss", "device_id":DEVICE["device_id"], "attachments":(io.BytesIO(b"\xff\xd8\xff\xe0test-image"), "photo.jpg")}, content_type="multipart/form-data")
+    assert report["reporter_name"] == "ישראל ישראלי" and report["reporter_contact"] == "050-0000000" and report["public_token"]
+    no_contact = {"device_id":f"no-contact-{uuid.uuid4()}", "reporter_name":"ללא קשר", "device_label":"מכשיר בדיקה"}
+    isolated = application.app.test_client()
+    assert isolated.post("/api/reporter-devices", json=no_contact).status_code == 200
+    blocked = isolated.post("/report/new", data={"report_type":"maintenance_request", "text_body":"דיווח ללא דרך קשר", "device_id":no_contact["device_id"]}, follow_redirects=True)
+    assert "יש לאפשר התראות או לשמור מספר נייד" in blocked.get_data(as_text=True)
+    photo = client.post("/report/new", data={"report_type":"safety_near_miss", "text_body":"אירוע עם תמונה", "device_id":DEVICE["device_id"], "attachments":(io.BytesIO(b"\xff\xd8\xff\xe0test-image"), "photo.jpg")}, content_type="multipart/form-data")
     assert photo.status_code == 302
-    rejected = client.post("/report/new", data={"report_type":"safety_near_miss", "device_id":DEVICE["device_id"], "attachments":(io.BytesIO(b"not an image"), "bad.jpg")}, content_type="multipart/form-data", follow_redirects=True)
+    rejected = client.post("/report/new", data={"report_type":"safety_near_miss", "text_body":"קובץ לא תקין", "device_id":DEVICE["device_id"], "attachments":(io.BytesIO(b"not an image"), "bad.jpg")}, content_type="multipart/form-data", follow_redirects=True)
     assert "תוכן הקובץ אינו תואם" in rejected.get_data(as_text=True)
     print("Smoke tests passed")
 

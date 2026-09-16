@@ -33,6 +33,7 @@ init_db()
 seed_initial_users()
 
 REPORT_TYPES = {"safety_near_miss", "maintenance_request", "process_quality"}
+ACTIVE_REPORT_TYPES = {"safety_near_miss", "maintenance_request"}
 WORKFLOW_STATUSES = {"new", "reviewed", "assigned", "in_progress", "resolved"}
 RATE_BUCKETS = defaultdict(deque)
 
@@ -132,12 +133,12 @@ def report_new():
 @rate_limit(12)
 def reporter_device_save():
     payload = request.get_json(silent=True) or {}
-    device_id = str(payload.get("device_id", "")).strip(); reporter_name = str(payload.get("reporter_name", "")).strip(); device_label = str(payload.get("device_label", "")).strip()
-    if not (8 <= len(device_id) <= 80 and 2 <= len(reporter_name) <= 80 and len(device_label) <= 80):
+    device_id = str(payload.get("device_id", "")).strip(); reporter_name = str(payload.get("reporter_name", "")).strip(); device_label = str(payload.get("device_label", "")).strip(); contact_detail = str(payload.get("contact_detail", "")).strip()
+    if not (8 <= len(device_id) <= 80 and 2 <= len(reporter_name) <= 80 and len(device_label) <= 80 and len(contact_detail) <= 120):
         return jsonify({"error": "פרטי המדווח אינם תקינים"}), 400
-    try: save_device(device_id, reporter_name, device_label, binding_token())
+    try: save_device(device_id, reporter_name, device_label, contact_detail, binding_token())
     except PermissionError: return jsonify({"error": "המכשיר משויך להפעלה אחרת. הזינו זיהוי חדש."}), 403
-    return jsonify({"device_id": device_id, "reporter_name": reporter_name, "device_label": device_label})
+    return jsonify({"device_id": device_id, "reporter_name": reporter_name, "device_label": device_label, "contact_detail": contact_detail})
 
 
 @app.get("/api/push/config")
@@ -178,10 +179,10 @@ def report_create():
     report_type = request.form.get("report_type", "")
     code = normalize_location_code(request.form.get("location_code", "")); text_body = request.form.get("text_body", "").strip()
     uploads = [upload for upload in request.files.getlist("attachments") if upload and upload.filename]
-    if report_type not in REPORT_TYPES:
+    if report_type not in ACTIVE_REPORT_TYPES:
         flash("יש לבחור סוג דיווח לפני השליחה", "error"); return redirect(url_for("report_new", location=code))
-    if not text_body and not uploads:
-        flash("יש להוסיף טקסט או קובץ אחד לפחות", "error"); return redirect(url_for("report_new", location=code))
+    if len(text_body) < 5:
+        flash("חובה לספר בקצרה על האירוע, לפחות 5 תווים", "error"); return redirect(url_for("report_new", location=code))
     try:
         for upload in uploads: validate_upload(upload)
     except ValueError as error:
@@ -189,6 +190,8 @@ def report_create():
     reporter = get_device(request.form.get("device_id", "").strip(), binding_token())
     if not reporter:
         flash("יש לשמור את פרטי המדווח לפני שליחת דיווח", "error"); return redirect(url_for("report_new", location=code))
+    if not reporter["contact_detail"] and not (push_enabled() and has_subscription(reporter["device_id"])):
+        flash("יש לאפשר התראות או לשמור מספר נייד / כינוי קשר לפני השליחה", "error"); return redirect(url_for("report_new", location=code))
     report_id = create_report(report_type, text_body, code or None, resolve_location(code), dict(reporter))
     try:
         for upload in uploads:
