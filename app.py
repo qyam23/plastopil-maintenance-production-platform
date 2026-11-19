@@ -3,6 +3,7 @@ import io
 import os
 import secrets
 import time
+from datetime import timedelta
 from collections import defaultdict, deque
 from functools import wraps
 from pathlib import Path
@@ -28,6 +29,7 @@ secret_key = os.getenv("SECRET_KEY")
 if not secret_key:
     raise RuntimeError("SECRET_KEY must be set in .env before starting the server")
 app.config["SECRET_KEY"] = secret_key
+app.config.update(PERMANENT_SESSION_LIFETIME=timedelta(days=90), SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax', SESSION_COOKIE_SECURE=bool(os.getenv('RENDER')))
 app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", 52428800))
 init_db()
 seed_initial_users()
@@ -73,6 +75,7 @@ def manager_required(view):
 
 
 def binding_token():
+    session.permanent = True
     if "device_binding" not in session:
         session["device_binding"] = secrets.token_urlsafe(24)
     return session["device_binding"]
@@ -136,9 +139,12 @@ def reporter_device_save():
     device_id = str(payload.get("device_id", "")).strip(); reporter_name = str(payload.get("reporter_name", "")).strip(); device_label = str(payload.get("device_label", "")).strip(); contact_detail = str(payload.get("contact_detail", "")).strip()
     if not (8 <= len(device_id) <= 80 and 2 <= len(reporter_name) <= 80 and len(device_label) <= 80 and len(contact_detail) <= 120):
         return jsonify({"error": "פרטי המדווח אינם תקינים"}), 400
-    try: save_device(device_id, reporter_name, device_label, contact_detail, binding_token())
+    email = str(payload.get('email', '')).strip()
+    if len(email) > 120 or (email and ('@' not in email or any(c.isspace() for c in email))):
+        return jsonify({'error': 'כתובת דוא״ל אינה תקינה'}), 400
+    try: save_device(device_id, reporter_name, device_label, contact_detail, binding_token(), email)
     except PermissionError: return jsonify({"error": "המכשיר משויך להפעלה אחרת. הזינו זיהוי חדש."}), 403
-    return jsonify({"device_id": device_id, "reporter_name": reporter_name, "device_label": device_label, "contact_detail": contact_detail})
+    return jsonify({"device_id": device_id, "reporter_name": reporter_name, "device_label": device_label, "contact_detail": contact_detail, 'email': email})
 
 
 @app.get("/api/push/config")

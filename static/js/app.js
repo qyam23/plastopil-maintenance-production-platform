@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const identityPanel = document.querySelector('#identity-panel');
   const reporterBar = document.querySelector('#reporter-bar');
   const reporterName = document.querySelector('#reporter-name');
+  const reporterEmail = document.querySelector('#reporter-email');
   const deviceLabel = document.querySelector('#device-label');
   const contactDetail = document.querySelector('#contact-detail');
   const pushPanel = document.querySelector('#push-panel');
@@ -57,17 +58,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const openIdentity = () => {
     reporterName.value = identity?.reporter_name || '';
+    reporterEmail.value = identity?.email || '';
     deviceLabel.value = identity?.device_label || '';
     contactDetail.value = identity?.contact_detail || '';
     identityPanel.hidden = false;
     reporterName.focus();
   };
 
-  const saveIdentity = async (name, label, contact) => {
+  const saveIdentity = async (name, label, contact, email = identity?.email || '') => {
     const send = () => fetch('/api/reporter-devices', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({device_id: deviceId, reporter_name: name, device_label: label, contact_detail: contact}),
+      body: JSON.stringify({device_id: deviceId, reporter_name: name, device_label: label, contact_detail: contact, email}),
     });
     let response = await send();
     if (response.status === 403) {
@@ -94,8 +96,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelector('#save-reporter').addEventListener('click', async () => {
     const name = reporterName.value.trim();
     reporterName.setCustomValidity(name.length < 2 ? 'יש להזין שם מלא' : '');
-    if (!reporterName.reportValidity()) return;
-    if (!await saveIdentity(name, deviceLabel.value.trim(), contactDetail.value.trim())) {
+    if (!reporterName.reportValidity() || !reporterEmail.reportValidity()) return;
+    if (!await saveIdentity(name, deviceLabel.value.trim(), contactDetail.value.trim(), reporterEmail.value.trim())) {
       alert('לא הצלחנו לשמור את פרטי המדווח. נסו שוב.');
     }
   });

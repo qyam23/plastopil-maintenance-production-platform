@@ -231,6 +231,7 @@ def init_db():
                 _ensure_sqlite_column(conn, "reports", column, definition)
             _ensure_sqlite_column(conn, "reporter_devices", "binding_token", "TEXT")
             _ensure_sqlite_column(conn, "reporter_devices", "contact_detail", "TEXT")
+            _ensure_sqlite_column(conn, "reporter_devices", "email", "TEXT")
             _ensure_sqlite_column(conn, "report_files", "content", "BLOB")
             _ensure_sqlite_column(conn, "report_files", "drive_file_id", "TEXT")
             _ensure_sqlite_column(conn, "report_files", "action_id", "INTEGER")
@@ -246,6 +247,7 @@ def init_db():
                 "ALTER TABLE reports ADD COLUMN IF NOT EXISTS archived_by TEXT",
                 "ALTER TABLE reporter_devices ADD COLUMN IF NOT EXISTS binding_token TEXT",
                 "ALTER TABLE reporter_devices ADD COLUMN IF NOT EXISTS contact_detail TEXT",
+                "ALTER TABLE reporter_devices ADD COLUMN IF NOT EXISTS email TEXT",
                 "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS content BYTEA",
                 "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS drive_file_id TEXT",
                 "ALTER TABLE report_files ADD COLUMN IF NOT EXISTS action_id BIGINT",
