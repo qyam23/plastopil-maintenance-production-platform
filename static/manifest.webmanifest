@@ -1,0 +1,17 @@
+{
+  "id": "/report/new",
+  "name": "Plastopil Employee Preview",
+  "short_name": "Plastopil Preview",
+  "description": "דיווח תקלות ואירועי בטיחות",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/report/new",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f1f5f6",
+  "theme_color": "#10283e",
+  "icons": [
+    {"src":"/static/icons/icon-192.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/static/icons/icon-512.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+  ]
+}

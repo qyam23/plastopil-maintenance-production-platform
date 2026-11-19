@@ -1,5 +1,6 @@
 {% extends 'base.html' %}{% block content %}
 <header><a href="{{ url_for('start') }}" class="back">→ חזרה</a><p class="eyebrow">דיווח חדש</p><h1>מה קרה?</h1></header>
+<section class="pwa-install" data-pwa-install hidden aria-live="polite"><div class="pwa-install-brand"><img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt=""><div><strong>PLASTOPIL בטלפון שלך</strong><small>פתחו ישירות ממסך הבית</small></div></div><button type="button" data-pwa-install-button class="button secondary">הוספה למסך הבית</button><p data-pwa-hint hidden></p></section>
 {% if location %}<div class="location-banner">✓ {{ location.department }} — {{ location.machine }}</div>{% else %}<div class="location-banner muted">ללא מיקום מזוהה</div>{% endif %}
 <form method="post" enctype="multipart/form-data" id="report-form">
   <input type="hidden" name="location_code" value="{{ location_code }}">

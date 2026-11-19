@@ -1,0 +1,12 @@
+.pwa-install { margin: 12px 0 18px; padding: 14px; border: 1px solid #bed5df; border-radius: 18px; background: #fff; box-shadow: 0 4px 16px #10283e0b; }
+.pwa-install[hidden] { display:none; }
+.pwa-install-brand { display:flex; gap:12px; align-items:center; margin-bottom:12px; }
+.pwa-install-brand img { width:48px; height:48px; border-radius:12px; }
+.pwa-install-brand strong,.pwa-install-brand small { display:block; }
+.pwa-install-brand small { color:#526b7b; font-size:.85rem; margin-top:3px; }
+.pwa-install .button { min-height:46px; width:100%; font-size:.95rem; }
+.pwa-install p { color:#425d6d; font-size:.88rem; margin:10px 0 0; line-height:1.5; }
+@media (display-mode: standalone) {
+  .pwa-install { display:none!important; }
+  body { padding-top: env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+}

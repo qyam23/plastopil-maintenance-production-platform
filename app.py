@@ -23,6 +23,10 @@ from src.telegram_service import notify
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
+# The public preview must never contact production databases or delivery services.
+for name in ("DATABASE_URL", "GOOGLE_DRIVE_FOLDER_ID", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN", "VAPID_PUBLIC_KEY", "VAPID_PRIVATE_KEY", "VAPID_SUBJECT", "ADMIN_USERNAME", "TECHNICIAN_USERNAME"):
+    os.environ.pop(name, None)
+os.environ["TELEGRAM_ENABLED"] = "0"
 app = Flask(__name__)
 secret_key = os.getenv("SECRET_KEY")
 if not secret_key:
@@ -31,6 +35,11 @@ app.config["SECRET_KEY"] = secret_key
 app.config["MAX_CONTENT_LENGTH"] = int(os.getenv("MAX_CONTENT_LENGTH", 52428800))
 init_db()
 seed_initial_users()
+
+@app.before_request
+def employee_preview_only():
+    if request.path.startswith('/manage') or request.path in {'/login', '/logout'}:
+        abort(404)
 
 REPORT_TYPES = {"safety_near_miss", "maintenance_request", "process_quality"}
 ACTIVE_REPORT_TYPES = {"safety_near_miss", "maintenance_request"}
